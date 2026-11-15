@@ -1,0 +1,41 @@
+name: Sync plugin repository
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          token: ${{ github.token }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Update repo.json from public releases
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python .github/scripts/sync_repo.py
+
+      - name: Commit catalog updates
+        run: |
+          git config user.name "MattyKatos"
+          git config user.email "mattwonus@gmail.com"
+          git add repo.json
+          if git diff --cached --quiet; then
+            echo "repo.json is already current."
+            exit 0
+          fi
+          git commit -m "Update repo.json from plugin releases"
+          git push origin HEAD:main
